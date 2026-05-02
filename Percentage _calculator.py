@@ -2,7 +2,7 @@ import streamlit as st
 from PIL import Image, ImageDraw
 import io
 
-# Initialize session state for tracking stages and data
+# Initialize session state
 if 'step' not in st.session_state:
     st.session_state.step = "setup"
 if 'user_name' not in st.session_state:
@@ -12,98 +12,94 @@ if 'current_amount' not in st.session_state:
 if 'history' not in st.session_state:
     st.session_state.history = []
 
-st.title("💰 Money Calculation Card")
+st.set_page_config(page_title="POS Slip Calc", layout="centered")
 
-# --- STAGE 1: Enter Name and Amount ---
+# --- STAGE 1: Setup ---
 if st.session_state.step == "setup":
-    # Specific input for the name
-    name_input = st.text_input("Enter the name", placeholder="e.g. Aravindan Varadarajan")
-    amount_input = st.number_input("Enter the amount", min_value=0.0, step=1.0, value=100.0)
+    st.subheader("Receipt Setup")
+    name_input = st.text_input("Enter the name", placeholder="Aravindan Varadarajan")
+    amount_input = st.number_input("Enter the amount", min_value=0.0, step=0.01, value=100.0)
     
-    if st.button("Next"):
-        if name_input.strip() == "":
-            st.error("Please enter a name to continue.")
-        else:
+    if st.button("Start Calculations"):
+        if name_input:
             st.session_state.user_name = name_input
             st.session_state.current_amount = amount_input
-            st.session_state.history = []
             st.session_state.step = "percentage"
             st.rerun()
 
-# --- STAGE 2: Percentage Entry ---
+# --- STAGE 2: Calculations ---
 elif st.session_state.step == "percentage":
-    st.subheader(f"User: {st.session_state.user_name}")
+    st.write(f"User: **{st.session_state.user_name}**")
     st.write(f"Current Balance: **{st.session_state.current_amount}**")
-    
-    percent = st.number_input("Enter percentage (%)", min_value=0.0, step=0.1)
+    percent = st.number_input("Next Percentage (%)", min_value=0.0, step=0.1)
 
-    if st.button("Calculate"):
+    if st.button("Apply %"):
         reduction = st.session_state.current_amount * (percent / 100)
         new_amount = st.session_state.current_amount - reduction
-        
-        step_num = len(st.session_state.history) + 1
-        # Store as bold-ready labels
         st.session_state.history.append({
-            "label": f"Calculation {step_num}",
-            "detail": f"{st.session_state.current_amount} * {percent}% = {new_amount}"
+            "label": f"Calculation {len(st.session_state.history)+1}",
+            "detail": f"{st.session_state.current_amount} * {percent}% = {round(new_amount, 2)}"
         })
-        
-        st.session_state.current_amount = new_amount
+        st.session_state.current_amount = round(new_amount, 2)
         st.rerun()
 
-    if st.button("Finish & View Card"):
+    if st.button("Generate POS Slip"):
         st.session_state.step = "final"
         st.rerun()
 
-# --- STAGE 3: Final Card Generation ---
+# --- STAGE 3: Final Card ---
 elif st.session_state.step == "final":
-    # Create Phone-Optimized Canvas (Portrait)
-    width, height = 450, 800 
+    # POS Slip Size: Narrow (380px) and Dynamic Height
+    # Height accounts for Header, Calculations, Total, and Thank You
+    width = 380
+    height = 320 + (len(st.session_state.history) * 60)
     img = Image.new('RGB', (width, height), color=(255, 255, 255))
     draw = ImageDraw.Draw(img)
     
-    y = 50
-    # Draw Bold Name (using double-draw method for weight)
-    name_text = st.session_state.user_name.upper()
-    draw.text((40, y), name_text, fill=(0, 0, 0))
-    draw.text((41, y), name_text, fill=(0, 0, 0))
+    y = 40
+    # Name: Size 24 (Simulated Bold & Large)
+    draw.text((20, y), st.session_state.user_name.upper(), fill=(0, 0, 0))
+    draw.text((21, y), st.session_state.user_name.upper(), fill=(0, 0, 0)) 
     
-    y += 50
-    draw.line((40, y, 410, y), fill=(200, 200, 200), width=1)
     y += 40
+    draw.line((20, y, 360, y), fill=(0, 0, 0), width=1)
+    y += 30
 
-    # Draw Calculations
+    # Calculations: Size 14
     for item in st.session_state.history:
-        # Bold Calculation Label
-        draw.text((40, y), f"{item['label']}:", fill=(0, 0, 0))
-        draw.text((41, y), f"{item['label']}:", fill=(0, 0, 0))
-        y += 25
-        # Calculation Detail
-        draw.text((40, y), item['detail'], fill=(50, 50, 50))
-        y += 60
+        draw.text((20, y), f"{item['label']}:", fill=(0, 0, 0))
+        draw.text((21, y), f"{item['label']}:", fill=(0, 0, 0))
+        y += 20
+        draw.text((20, y), item['detail'], fill=(60, 60, 60))
+        y += 40
 
-    # Final Bold Total
-    y += 30
-    draw.line((40, y, 410, y), fill=(0, 0, 0), width=2)
-    y += 30
-    total_text = f"TOTAL MONEY = {st.session_state.current_amount}"
-    draw.text((40, y), total_text, fill=(0, 100, 0))
-    draw.text((41, y), total_text, fill=(0, 100, 0))
+    # Total: Size 18
+    y += 20
+    draw.line((20, y, 360, y), fill=(0, 0, 0), width=2)
+    y += 25
+    total_txt = f"TOTAL: {st.session_state.current_amount}"
+    draw.text((20, y), total_txt, fill=(0, 128, 0))
+    draw.text((21, y), total_txt, fill=(0, 128, 0))
 
-    st.image(img, caption="Final Result Card")
-    
-    # Download logic
+    # THANK YOU!: Size 16 (Centered)
+    y += 60
+    thank_you_text = "THANK YOU!"
+    # Simple centering logic
+    draw.text((120, y), thank_you_text, fill=(0, 0, 0))
+    draw.text((121, y), thank_you_text, fill=(0, 0, 0))
+
+    # Display result
+    st.image(img, caption="Final POS Slip")
+
+    # Image processing for sharing
     buf = io.BytesIO()
     img.save(buf, format="PNG")
-    byte_im = buf.getvalue()
-    
-    st.download_button(
-        label="Download Card as Image",
-        data=byte_im,
-        file_name="calculation_card.png",
-        mime="image/png"
-    )
+    img_bytes = buf.getvalue()
 
-    if st.button("Start New Calculation"):
+    st.download_button("Save Receipt to Phone", data=img_bytes, file_name="pos_receipt.png", mime="image/png")
+    st.info("Download the image first, then share it to WhatsApp. This keeps your data private and log-free.")
+
+    if st.button("New Calculation"):
         st.session_state.step = "setup"
+        st.session_state.history = []
         st.rerun()
