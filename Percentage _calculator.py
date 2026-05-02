@@ -12,7 +12,7 @@ if 'current_amount' not in st.session_state:
 if 'history' not in st.session_state:
     st.session_state.history = []
 
-st.title("💰 Money Calculation Card")
+st.title("💰 Professional Money Card")
 
 # --- STAGE 1: Setup ---
 if st.session_state.step == "setup":
@@ -26,63 +26,73 @@ if st.session_state.step == "setup":
         st.session_state.step = "percentage"
         st.rerun()
 
-# --- STAGE 2: Sequential Percentages ---
+# --- STAGE 2: Calculations ---
 elif st.session_state.step == "percentage":
     st.subheader(f"Current Balance: {st.session_state.current_amount}")
     percent = st.number_input("Enter percentage (%)", min_value=0.0, step=0.1)
 
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Apply Percentage"):
-            reduction = st.session_state.current_amount * (percent / 100)
-            new_amount = st.session_state.current_amount - reduction
-            
-            # Record step
-            step_num = len(st.session_state.history) + 1
-            entry = f"Calculation {step_num}: {st.session_state.current_amount} - {percent}% = {new_amount}"
-            st.session_state.history.append(entry)
-            
-            st.session_state.current_amount = new_amount
-            st.rerun()
+    if st.button("Apply Percentage"):
+        reduction = st.session_state.current_amount * (percent / 100)
+        new_amount = st.session_state.current_amount - reduction
+        
+        step_num = len(st.session_state.history) + 1
+        entry = (f"Calculation {step_num}", f"{st.session_state.current_amount} * {percent}% = {new_amount}")
+        st.session_state.history.append(entry)
+        
+        st.session_state.current_amount = new_amount
+        st.rerun()
 
-    with col2:
-        if st.button("Finish & Generate Card"):
-            st.session_state.step = "final"
-            st.rerun()
+    if st.button("Finish & Generate Card"):
+        st.session_state.step = "final"
+        st.rerun()
 
-    if st.session_state.history:
-        st.write("---")
-        for h in st.session_state.history:
-            st.text(h)
-
-# --- STAGE 3: Final Card Generation ---
+# --- STAGE 3: Final Optimized Card ---
 elif st.session_state.step == "final":
-    st.success("Summary Generated")
+    # 1. Create a Phone-Sized Canvas (Portrait 1080x1920 scaled down for web)
+    width, height = 400, 700 
+    img = Image.new('RGB', (width, height), color=(255, 255, 255))
+    draw = ImageDraw.Draw(img)
     
-    # Create an Image (Card)
-    img = Image.new('RGB', (500, 400), color=(73, 109, 137))
-    d = ImageDraw.Draw(img)
+    # 2. Draw Text (Using default font; size is simulated with spacing)
+    y_offset = 60
     
-    # Text content for the card
-    card_text = f"NAME: {st.session_state.user_name}\n\n"
-    for h in st.session_state.history:
-        card_text += f"{h}\n"
-    card_text += f"\nTOTAL MONEY: {st.session_state.current_amount}"
+    # Header: Name (Bold simulation)
+    draw.text((40, y_offset), f"NAME: {st.session_state.user_name.upper()}", fill=(0, 0, 0))
+    draw.text((41, y_offset), f"NAME: {st.session_state.user_name.upper()}", fill=(0, 0, 0)) # Double draw for bold
     
-    d.text((20, 20), card_text, fill=(255, 255, 0))
+    y_offset += 60
+    draw.line((40, y_offset, 360, y_offset), fill=(200, 200, 200))
+    y_offset += 40
+
+    # Calculations
+    for label, calc in st.session_state.history:
+        # Bold Label
+        draw.text((40, y_offset), f"{label}:", fill=(0, 0, 0))
+        draw.text((41, y_offset), f"{label}:", fill=(0, 0, 0))
+        y_offset += 25
+        # Calculation detail
+        draw.text((40, y_offset), calc, fill=(60, 60, 60))
+        y_offset += 50
+
+    # Final Total
+    y_offset += 40
+    draw.line((40, y_offset, 360, y_offset), fill=(0, 0, 0), width=2)
+    y_offset += 30
+    final_text = f"TOTAL MONEY: {st.session_state.current_amount}"
+    draw.text((40, y_offset), final_text, fill=(0, 128, 0))
+    draw.text((41, y_offset), final_text, fill=(0, 128, 0)) # Bold Total
+
+    # 3. Display and Download
+    st.image(img, caption="WhatsApp Optimized Card")
     
-    # Display the Card
-    st.image(img, caption="Your Calculation Card")
-    
-    # Convert image to bytes for download
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     byte_im = buf.getvalue()
     
     st.download_button(
-        label="Download Card to Share on WhatsApp",
+        label="Download Image to Share",
         data=byte_im,
-        file_name="money_card.png",
+        file_name="result_card.png",
         mime="image/png"
     )
 
